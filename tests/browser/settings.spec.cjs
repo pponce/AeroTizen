@@ -54,6 +54,7 @@ test('compiled Settings escape waits for /leave before launching native Samsung 
     acknowledge = async () => { await route.fulfill({ status: 200, body: '{}' }); resolve(); };
   }));
   await openSettings(page);
+  await page.waitForFunction(() => AeroTizen.appMode.getSnapshot().ready);
   await openCategory(page,'apps');
   const escape = page.getByRole('button', { name: 'Use Samsung Home instead', exact: true });
   await escape.focus();

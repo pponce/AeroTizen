@@ -41,13 +41,14 @@ test('diagnostics persist across reload without changing launcher navigation or 
   expect(serviceRequests).toEqual([]); expect(errors).toEqual([]);
 });
 
-test('manual TV startup keeps UI events local without contacting a service', async ({ page }) => {
+test('App mode startup checks its preference while keeping UI events local', async ({ page }) => {
   const errors = [], delivered = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('https://**/*', route => route.fulfill({ contentType: 'application/json', body: '{}' }));
   await page.route('http://127.0.0.1:47790/**', route => {
-    delivered.push(route.request().url());
-    return route.fulfill({ status: 503, body: '{}' });
+    delivered.push({method: route.request().method(), path: new URL(route.request().url()).pathname});
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({protocol: 1,
+      ready: true, enabled: true, persistent: true, blocked: false, home_mode: 'watcher'}) });
   });
   await page.addInitScript(() => {
     window.tizen = {
@@ -63,7 +64,9 @@ test('manual TV startup keeps UI events local without contacting a service', asy
   await expect(page.locator('#grid > .tile').first()).toBeVisible();
   await expect.poll(async () => (await persistedEvents(page)).some(item => item.event === 'ui.loaded')).toBe(true);
   expect(await page.evaluate(() => AeroDiagnostics.snapshot().records.some(item => item.event === 'ui.start'))).toBe(true);
-  expect(delivered).toEqual([]);
+  await page.waitForFunction(() => AeroTizen.appMode.getSnapshot().ready);
+  expect(delivered.length).toBeGreaterThan(0);
+  expect(delivered.every(request => request.method === 'GET' && request.path === '/app-mode')).toBe(true);
   expect(await page.evaluate(() => document.hidden)).toBe(false);
   expect(errors).toEqual([]);
 });
