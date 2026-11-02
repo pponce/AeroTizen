@@ -61,6 +61,7 @@ function harness(options = {}) {
   const A = {
     tizen: tz,
     config: {
+      MANUAL_APP: options.manual === true,
       SERVICE_URL: 'http://127.0.0.1:47790',
       STORE_PACKAGE: /^[A-Za-z0-9]{10}$/,
       HIDDEN_APPS: /service/i,
@@ -279,4 +280,31 @@ test('app store falls back to org.volt.apps where com.samsung.tv.store is missin
   h.A.apps.openStore();
   assert.deepEqual(h.launches.map(r => r.id), ['com.samsung.tv.store', 'org.volt.apps']);
   assert.deepEqual(h.toasts, []);
+});
+
+test('manual app opens YouTube and Samsung Home without waiting for a watcher', () => {
+  const h = harness({ manual: true });
+  h.A.apps.launch({ id: 'youtube.app', name: 'YouTube' });
+  h.A.homewatch.openSamsungHome();
+  assert.deepEqual(h.launches.map(r => r.id), ['youtube.app', 'com.samsung.tv.csfs']);
+  assert.deepEqual(h.requests, []);
+});
+
+test('manual app selects the tuner and opens Live TV without a watcher', () => {
+  const h = harness({ manual: true });
+  const raw = { type: 'TV', number: 1 };
+  h.A.inputs.show({ type: 'TV', number: 1, raw });
+  assert.equal(h.inputs[0].source, raw);
+  assert.deepEqual(h.launches.map(r => r.id), ['org.tizen.tv-viewer']);
+  assert.deepEqual(h.requests, []);
+});
+
+test('manual app handles denied launches and foreground reloads without restarting a service', () => {
+  const h = harness({ manual: true, launchFails: true, appControlFails: true });
+  h.A.apps.launch({ id: 'youtube.app', name: 'YouTube' });
+  h.A.homewatch.openSamsungHome();
+  h.A.homewatch.openNativeLiveTV();
+  h.listeners.load();
+  assert.equal(h.toasts.length, 3);
+  assert.deepEqual(h.requests, []);
 });

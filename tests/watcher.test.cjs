@@ -31,6 +31,11 @@ function harness(options = {}) {
       stored.set(key, value);
     }
   };
+  const appStored = options.appStored || new Map([['aerotizen.app-mode.v1', JSON.stringify({enabled: options.appMode === true})]]);
+  const appPreference = options.noAppPreference ? null : {
+    exists: key => appStored.has(key), getValue: key => appStored.get(key),
+    setValue(key, value) { if (options.failAppStorage) throw new Error('storage failed'); appStored.set(key, value); }
+  };
   const art = {
     starts: 0, stops: 0,
     start() { this.starts += 1; },
@@ -107,7 +112,9 @@ function harness(options = {}) {
       if (name === './diagnostics-store') return (tz, ready) => ready(options.diagnosticsStorage || null);
       if (name === './artmode') return config => { artOptions = config; return art; };
       if (name === './home-mode') return require('../launcher/service/home-mode');
-      if (name === './home-store') return (tz, ready) => ready(preference, !!options.storageReadFailed);
+      if (name === './app-mode') return require('../launcher/service/app-mode');
+      if (name === './home-store') return (tz, ready, filename) => filename === 'aerotizen-app-mode-v1.json'
+        ? ready(appPreference, !!options.appStorageReadFailed) : ready(preference, !!options.storageReadFailed);
       if (name === 'url') return url;
       throw new Error('Unexpected require: ' + name);
     },
@@ -145,7 +152,7 @@ function harness(options = {}) {
   }
   return {
     api: context.module.exports, art, artReplies, requests, servers, launches, statuses,
-    advance, control, post, handoff, stored, state: () => control(),
+    advance, control, post, handoff, stored, appStored, state: () => control(),
     setArt(value) { artValue = value; artOptions.onChange(value, 'mock reply'); },
     answerArt(value) {
       assert.ok(artReplies.length, 'a fresh Art query must exist');
@@ -670,6 +677,85 @@ test('pending diagnostic storage does not delay Home requests or native mode con
   });
   assert.ok(logs.records.some(item => item.event === 'service.request' && item.data.action === 'home'));
   completions.shift()(null); h.advance(500); assert.equal(saves.length, 2);
+});
+
+function appModePost(h, enabled, overrides = {}) {
+  return h.post({ enabled, expected_enabled: h.control('/app-mode').enabled }, {
+    url: '/app-mode', headers: { origin: 'null', 'content-type': 'text/plain' }, ...overrides
+  });
+}
+
+test('a fresh installation keeps App mode on across boot and ordinary watcher messages', () => {
+  const h = harness({ appStored: new Map(), capability: false }); h.api.onStart();
+  assert.equal(h.control('/app-mode').enabled, true);
+  for (const path of ['/home', '/watch?id=netflix', '/apps?ids=netflix', '/leave', '/home']) h.control(path);
+  h.advance(60000);
+  assert.equal(h.requests.length, 0); assert.equal(h.launches.length, 0); assert.equal(h.art.starts, 0);
+  assert.equal(h.state().heartbeats, 0);
+});
+
+test('App mode off persists and restores watcher boot behavior without Vetro', () => {
+  const saved = new Map();
+  const h = harness({ appStored: saved, capability: false }); h.api.onStart();
+  assert.equal(appModePost(h, false).code, 200);
+  h.advance(3500); assert.equal(h.launches.length, 1);
+  h.api.onExit();
+  const restart = harness({ appStored: saved, capability: false }); restart.api.onStart();
+  assert.equal(restart.control('/app-mode').enabled, false);
+  restart.advance(3500); assert.equal(restart.launches.length, 1);
+  assert.ok(restart.requests.every(item => item.options.port === 8001));
+});
+
+test('App mode on cancels boot and late watcher replies and survives restart', () => {
+  const h = harness({ capability: false }); h.api.onStart(); h.advance(1000);
+  assert.equal(appModePost(h, true).code, 200);
+  const count = h.requests.length; h.advance(60000);
+  assert.equal(h.requests.length, count); assert.equal(h.launches.length, 0);
+  const restart = harness({ appStored: h.appStored }); restart.api.onStart(); restart.advance(60000);
+  assert.equal(restart.requests.length, 0); assert.equal(restart.launches.length, 0);
+});
+
+test('App mode cancels in-flight Frame authorization', () => {
+  const h = ready(); candidate(h);
+  assert.ok(h.artReplies.length);
+  assert.equal(appModePost(h, true).code, 200);
+  while (h.artReplies.length) h.answerArt('off');
+  h.advance(60000); assert.equal(h.launches.length, 0);
+});
+
+test('App mode requests reject other origins, stale writes, invalid values and oversized bodies', () => {
+  const h = harness({ appMode: true }); h.api.onStart();
+  assert.equal(appModePost(h, false, { headers: { origin: 'https://example.com', 'content-type': 'text/plain' } }).code, 403);
+  for (const body of [{ enabled: 'false', expected_enabled: true }, { enabled: false, expected_enabled: false }, '{']) {
+    assert.equal(h.post(body, { url: '/app-mode', headers: { origin: 'null', 'content-type': 'text/plain' } }).code, 409);
+  }
+  assert.equal(h.post('x'.repeat(1025), { url: '/app-mode', headers: { 'content-type': 'text/plain' } }).code, 413);
+  assert.equal(h.control('/app-mode').enabled, true);
+  h.advance(60000); assert.equal(h.launches.length, 0);
+});
+
+test('failed App mode storage cannot enable the watcher or claim a saved change', () => {
+  for (const options of [{ noAppPreference: true }, { failAppStorage: true }, { appStorageReadFailed: true }]) {
+    const h = harness({ ...options, appMode: true }); h.api.onStart();
+    assert.equal(appModePost(h, false).code, 409);
+    assert.equal(h.control('/app-mode').enabled, true);
+    h.advance(60000); assert.equal(h.launches.length, 0); assert.equal(h.requests.length, 0);
+  }
+  const h = harness({ appStored: new Map([['aerotizen.app-mode.v1', 'corrupt']]) }); h.api.onStart();
+  assert.equal(appModePost(h, false).code, 409);
+  assert.equal(appModePost(h, true).code, 200);
+  assert.equal(appModePost(h, false).code, 200);
+});
+
+test('App mode never silently applies or overwrites Native Home', () => {
+  const h = harness({ appMode: true }); h.api.onStart();
+  assert.equal(h.handoff('hold').code, 409);
+  appModePost(h, false); assert.equal(h.handoff('hold').code, 200); assert.equal(h.handoff('native').code, 200);
+  assert.equal(appModePost(h, true).code, 409);
+  assert.equal(h.state().homeControl.mode, 'native');
+  const restart = harness({ stored: h.stored, appMode: true }); restart.api.onStart();
+  assert.equal(restart.handoff('hold').code, 200); assert.equal(restart.handoff('watcher').code, 200);
+  restart.advance(60000); assert.equal(restart.requests.length, 0);
 });
 
 let failed = 0;

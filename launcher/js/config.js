@@ -2,6 +2,8 @@
 window.AeroTizen = window.AeroTizen || {};
 
 AeroTizen.config = {
+  // Safe default until the local service confirms the saved App mode.
+  MANUAL_APP: true,
   APP_ID: 'DclHome001.Home',
   SERVICE_ID: 'DclHome001.Watcher',
   SERVICE_URL: 'http://127.0.0.1:47790',

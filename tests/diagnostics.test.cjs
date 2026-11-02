@@ -89,6 +89,7 @@ function browser(options = {}) {
   const listeners = {}, stored = new Map(options.saved ? [['snapshot', JSON.stringify(options.saved)]] : []), requests = [], c = clock();
   let writes = 0;
   const window = {
+    AeroTizen: { config: { MANUAL_APP: options.manual === true } },
     AeroDiagnosticsPrivacy: require('../launcher/js/diagnostics-privacy'),
     document: { hidden: false, addEventListener: (name, fn) => { listeners[name] = fn; } },
     addEventListener: (name, fn) => { listeners[name] = fn; },
@@ -127,6 +128,15 @@ test('desktop preview logs lifecycle locally without service requests', () => {
   assert.equal(h.requests.length, 0);
   assert.equal(h.window.AeroDiagnostics.snapshot().records.at(-1).event, 'ui.visibility');
   assert.ok(h.stored.get('snapshot'));
+});
+
+test('manual TV app retains its local log without delivery attempts to an absent service', () => {
+  const h = browser({ tv: true, manual: true });
+  h.listeners.load(); h.listeners.visibilitychange();
+  h.window.AeroDiagnostics.flush(); h.advance(20000);
+  assert.deepEqual(h.requests, []);
+  assert.ok(h.stored.get('snapshot'));
+  assert.equal(h.window.AeroDiagnostics.snapshot().records.at(-1).event, 'ui.visibility');
 });
 
 test('UI sends bounded event batches with sanitized error context', () => {

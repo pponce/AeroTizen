@@ -155,7 +155,8 @@ function watcherHarness() {
     require: name => name === 'http' ? http
       : name === './artmode' ? () => ({ start() {}, stop() {}, fresh() {}, getState: () => ({}) })
       : name === './home-mode' ? require('../launcher/service/home-mode')
-      : name === './home-store' ? (tz, ready) => ready(null, false)
+      : name === './app-mode' ? require('../launcher/service/app-mode')
+      : name === './home-store' ? (tz, ready, filename) => ready(filename ? {exists: () => true, getValue: () => JSON.stringify({enabled: false}), setValue() {}} : null, false)
       : require(name),
     module: { exports: {} },
     tizen: { application: { launch: id => launches.push(id) } },

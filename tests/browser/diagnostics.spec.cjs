@@ -41,17 +41,13 @@ test('diagnostics persist across reload without changing launcher navigation or 
   expect(serviceRequests).toEqual([]); expect(errors).toEqual([]);
 });
 
-test('cold-start UI events reach a late service without leaving the launcher', async ({ page }) => {
+test('manual TV startup keeps UI events local without contacting a service', async ({ page }) => {
   const errors = [], delivered = [];
-  let readyAt;
   page.on('pageerror', error => errors.push(error.message));
   await page.route('https://**/*', route => route.fulfill({ contentType: 'application/json', body: '{}' }));
   await page.route('http://127.0.0.1:47790/**', route => {
-    if (route.request().method() !== 'POST') return route.fulfill({ body: '{}' });
-    if (!readyAt) readyAt = Date.now() + 1800;
-    if (Date.now() < readyAt) return route.fulfill({ status: 503, body: '{}' });
-    const batch = route.request().postDataJSON().records; delivered.push(...batch);
-    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ schema_version: 1, accepted: batch.length }) });
+    delivered.push(route.request().url());
+    return route.fulfill({ status: 503, body: '{}' });
   });
   await page.addInitScript(() => {
     window.tizen = {
@@ -65,8 +61,9 @@ test('cold-start UI events reach a late service without leaving the launcher', a
   });
   await page.goto('/');
   await expect(page.locator('#grid > .tile').first()).toBeVisible();
-  await expect.poll(() => delivered.some(item => item.event === 'ui.loaded'), { timeout: 8000 }).toBe(true);
-  expect(delivered.some(item => item.event === 'ui.start')).toBe(true);
+  await expect.poll(async () => (await persistedEvents(page)).some(item => item.event === 'ui.loaded')).toBe(true);
+  expect(await page.evaluate(() => AeroDiagnostics.snapshot().records.some(item => item.event === 'ui.start'))).toBe(true);
+  expect(delivered).toEqual([]);
   expect(await page.evaluate(() => document.hidden)).toBe(false);
   expect(errors).toEqual([]);
 });
@@ -144,7 +141,7 @@ for (const unavailable of [false, true]) {
 }
 
 
-test('personal text is excluded before IndexedDB persistence and loopback delivery', async ({ page }) => {
+test('personal text is excluded from manual-app logs and never delivered to a service', async ({ page }) => {
   const delivered = [];
   const poison = 'Alex Example alex@example.invalid 2001:db8::7 My Private Film PRIVATE-CREDENTIAL';
   await page.route('https://**/*', route => route.fulfill({ body: '{}' }));
@@ -173,7 +170,7 @@ test('personal text is excluded before IndexedDB persistence and loopback delive
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('#grid > .tile.focused')).toHaveCount(1);
   await expect.poll(async () => (await persistedEvents(page)).some(item => item.event === 'app.launch_requested')).toBe(true);
-  await expect.poll(() => delivered.some(packet => packet.records.some(item => item.event === 'app.launch_requested'))).toBe(true);
+  expect(delivered).toEqual([]);
   const raw = JSON.stringify({ saved: await persistedEvents(page), uploads: delivered,
     memory: await page.evaluate(() => AeroDiagnostics.snapshot()) });
   for (const value of poison.split(' ').concat(['private-person'])) expect(raw).not.toContain(value);

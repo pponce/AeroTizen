@@ -34,8 +34,8 @@ On Android TV you would install a different launcher and remove the junk over AD
 this harder: developer access is limited, and the official developer tools are a large SDK that
 doesn't run natively on Apple Silicon.
 
-AeroTizen works around that. The launcher is a normal TV app that acts as the home screen: it opens
-when the TV turns on and comes back when you press Home. The CLI handles the setup (certificates,
+AeroTizen works around that. The launcher starts as a normal TV app. You can opt into its background watcher
+in Settings to reopen it when Samsung Home appears and at power-on. The CLI handles the setup (certificates,
 signing, installing) and shows which preinstalled apps can be removed. Tizen Studio and root
 access aren't needed.
 
@@ -46,7 +46,7 @@ On the TV:
 - Your apps as square cards using each app's own artwork from the TV. Pick **Big** (3 across) or
   **Small** (5 across). Apps without artwork show their icon and name
 - **Home** and **All apps** tabs: keep favourites on Home and open any installed app from All apps
-- Opens at power-on and comes back when you press Home (see [Home options](#choose-how-home-works)
+- Runs as an app by default, with optional automatic startup and Home watching (see [Home options](#choose-how-home-works)
   and [Limits](#limits))
 - Hold OK on a tile for **Move**, **Add to Home** or **Remove from Home**
 - Opens HbbTV apps such as BBC iPlayer
@@ -210,8 +210,9 @@ directory. You can then omit `./` (macOS/Linux) or `.\` (Windows) from the comma
 If you already use Python 3.10 or newer, you can instead install the CLI with
 `pip install git+https://github.com/helalaou/AeroTizen` and run it as `aerotizen`.
 
-The launcher is now installed and uses the watcher by default. The gear icon opens settings.
-For the optional native Home setup, see [Home options](#choose-how-home-works).
+The launcher is now installed with **App mode on**. Open it from Apps or a pinned tile.
+The gear icon opens Settings; **Applications → App mode** controls Home watching.
+For the optional watcher and native Home setup, see [Home options](#choose-how-home-works).
 
 In **Settings → Weather**, choose **Show weather** or **Hide weather**. Hiding weather
 stops automatic location and forecast requests, while keeping your saved location and
@@ -262,11 +263,26 @@ Neither source is confirmed as an accurate mirror of its in-app row.
 
 ## Choose how Home works
 
-Both options run on the TV; your computer can be switched off after setup. Neither needs root.
+All modes run on the TV; your computer can be switched off after setup. None needs root.
+
+**App mode is on by default**, including on upgrade when no preference has been saved.
+Open **Settings → Applications → App mode** to change it. Turning it off enables the
+existing watcher and automatic startup; turning it on cancels pending watcher launches.
+The registered local service stays available to save the preference, but does not poll
+apps or reopen AeroTizen while App mode is on.
+
+If you use **Vetro's Launcher**, turn that feature off in Vetro before enabling AeroTizen's
+watcher. AeroTizen checks Vetro's local status and shows a warning; it does not change Vetro's
+settings, replace it, or install another copy. An unavailable status check means unknown,
+not that Vetro is absent. Leaving both enabled can make them compete over Samsung Home.
+
+Restore any existing native Home assignment before changing App mode. App mode does not
+rewrite the TV's native Home or startup settings.
 
 | Option | How it works |
 |---|---|
-| **Watcher (default)** | A background service detects a return to Samsung Home and reopens AeroTizen. Some apps cannot be detected (see [Limits](#limits)). |
+| **App mode (default)** | Open AeroTizen manually; it does not reclaim Samsung Home or start its UI automatically. |
+| **Watcher (App mode off)** | A background service detects a return to Samsung Home and reopens AeroTizen. Some apps cannot be detected (see [Limits](#limits)). |
 | **Native Home (opt-in)** | The TV routes Home from other apps to AeroTizen, with optional automatic startup. The watcher is disabled. |
 
 Native Home is experimental. Other models and firmware can now test if compatibility checks
@@ -288,7 +304,7 @@ backup before opening AeroTizen (replace `TV_IP` with your TV's address):
 ./aerotizen --tv TV_IP home backup
 ```
 
-Then open AeroTizen on the TV to start its control service, and apply Home only:
+Then open AeroTizen on the TV, turn App mode off in Settings, and apply Home only:
 
 ```sh
 ./aerotizen --tv TV_IP home apply --yes
@@ -321,7 +337,8 @@ To revert, whether AeroTizen is still installed or has been uninstalled, run:
 ```
 
 Restore uses your saved values, not hardcoded Samsung defaults. If AeroTizen is installed,
-it coordinates with the control service and re-enables the watcher. After uninstall, the
+it coordinates with the control service and restores watcher routing. The watcher runs only
+while App mode is off. After uninstall, the
 CLI restores directly through the developer connection; no reinstall or root is needed.
 **After apply or restore, disconnect TV/One Connect power for 60 seconds, then restart.**
 Before `uninstall launcher`, restore native Home; uninstall stops while Home or startup still points to AeroTizen.
@@ -344,6 +361,7 @@ Export creates a ZIP in the current folder. Adding `--tv` also fetches recent la
 and background-service events through the developer connection. It does not launch
 apps or change Home settings. If the TV is unavailable, the ZIP still contains PC logs.
 TV logs need a launcher build with this feature and a running background service.
+In App mode, UI diagnostics remain local and are not forwarded to that service.
 On the tested Frame, return from another app before exporting after a cold start
 to include queued UI startup events.
 

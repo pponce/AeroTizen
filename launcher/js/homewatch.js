@@ -8,7 +8,7 @@
   var leaving = false;
 
   function tell(path, done, failed) {
-    if (!tz) { return; }
+    if (!tz || cfg.MANUAL_APP) { return; }
     var x = new XMLHttpRequest();
     x.open('GET', cfg.SERVICE_URL + path);
     x.timeout = 1500;
@@ -27,7 +27,8 @@
   }
 
   function start() {
-    if (!tz) { return; }
+    if (A.appMode) { A.appMode.connect(); return; }
+    if (!tz || cfg.MANUAL_APP) { return; }
     if (window.AeroDiagnostics) { window.AeroDiagnostics.record('service.launch_requested'); }
     try {
       tz.application.launchAppControl(new tz.ApplicationControl('http://tizen.org/appcontrol/operation/service'),
@@ -37,6 +38,7 @@
 
   A.homewatch = {
     start: start,
+    returned: function () { leaving = false; tell('/home'); },
     // The launcher is about to open `appId`; Home inside it should come back here.
     watch: function (appId) { tell('/watch?id=' + encodeURIComponent(A.catalog.preloadedStoreId(appId) || appId)); },
     // Every real app, so the service can tell a cast/launch from elsewhere apart from Home.
@@ -46,13 +48,18 @@
     // Launch Samsung Home explicitly: exiting a native Home app can route back to itself.
     useSamsungHome: function () {
       if (!tz) { A.toast('Would open Samsung Home'); return; }
+      if (A.appMode && !A.appMode.getSnapshot().ready) { A.toast('Check Home behavior in Settings before opening Samsung Home.'); return; }
       leaving = true;
       function failed() { leaving = false; A.toast('Samsung Home is unavailable. Try again.'); }
-      tell('/leave', function (status) {
-        if (!status || status.leaving !== true) { failed(); return; }
+      function openHome() {
         try {
           tz.application.launch('com.samsung.tv.csfs', null, function () { tell('/home'); failed(); });
         } catch (e) { tell('/home'); failed(); }
+      }
+      if (cfg.MANUAL_APP) { openHome(); return; }
+      tell('/leave', function (status) {
+        if (!status || status.leaving !== true) { failed(); return; }
+        openHome();
       }, failed);
     },
     isLeaving: function () { return leaving; }

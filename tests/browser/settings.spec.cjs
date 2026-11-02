@@ -15,6 +15,7 @@ test.beforeEach(async ({ page }) => {
   // All weather lookups are fixtures; no entered location leaves the test.
   await page.route('https://**/*', route => route.fulfill({ contentType: 'application/json', body: '{}' }));
   await page.route('http://127.0.0.1:47790/**', route => route.fulfill({ body: '{}' }));
+  await page.route('http://127.0.0.1:8099/screen', route => route.fulfill({body: JSON.stringify({version: '0.3.5', launcher: {enabled: false}})}));
 });
 test.afterEach(async ({ page }) => { expect(errors.get(page)).toEqual([]); });
 
@@ -47,6 +48,7 @@ test('compiled Settings escape waits for /leave before launching native Samsung 
       systeminfo: { getPropertyValue(name, done, fail) { fail?.(); }, addPropertyValueChangeListener() {} }
     };
   });
+  await page.route('http://127.0.0.1:47790/app-mode', route => route.fulfill({body: JSON.stringify({protocol: 1, ready: true, enabled: false, blocked: false, persistent: true, home_mode: 'watcher'})}));
   let acknowledge;
   await page.route('http://127.0.0.1:47790/leave', route => new Promise(resolve => {
     acknowledge = async () => { await route.fulfill({ status: 200, body: '{}' }); resolve(); };

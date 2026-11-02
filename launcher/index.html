@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=1920, height=1080">
   <title>AeroTizen</title>
   <script src="js/build-info.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/diagnostics-storage.js"></script>
   <script src="js/diagnostics-privacy.js"></script>
   <script src="js/diagnostics.js"></script>
@@ -93,6 +94,14 @@
     <h3>Show in app menu</h3>
     <p class="hint">Press OK to show or hide a tile on the home screen. On the home screen, hold OK on a tile to move it.</p>
     <div id="all-apps" class="grid"></div>
+    <section aria-label="Home behavior">
+      <h3>App mode</h3>
+      <p class="hint">On: open AeroTizen like any other app. Off: let AeroTizen return when Samsung Home appears and start automatically.</p>
+      <div id="app-mode-choices" class="units" role="group" aria-label="App mode"></div>
+      <p id="app-mode-status" class="hint" role="status"></p>
+      <p id="app-mode-warning" class="hint" role="status"></p>
+      <div id="app-mode-check" class="units"></div>
+    </section>
     <div id="escape" class="escape">Use Samsung Home instead</div>
   </div>
 
@@ -103,7 +112,6 @@
   </div>
 
   <div id="toast" class="toast" hidden></div>
-  <script src="js/config.js"></script>
   <script src="js/app-catalog.js"></script>
   <script src="js/app-lookup.js"></script>
   <script src="js/dom.js"></script>
@@ -116,6 +124,7 @@
   <script src="js/fireplace.js"></script>
   <script src="js/artwork.js"></script>
   <script src="js/brands.js"></script>
+  <script src="js/app-mode.js"></script>
   <script src="js/homewatch.js"></script>
   <script src="js/native-navigation.js"></script>
   <script src="js/apps.js"></script>

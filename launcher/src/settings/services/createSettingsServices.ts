@@ -5,6 +5,7 @@ import type { LauncherRuntime } from './launcherRuntime';
 // receive data/commands; none can call the legacy tile DOM constructors.
 export const createSettingsServices = (runtime: LauncherRuntime): SettingsServices => ({
   config: runtime.config,
+  appMode: runtime.appMode,
   translate: value => runtime.i18n?.t(value) || value,
   clock: {
     dateStyle: runtime.clock.dateStyle,

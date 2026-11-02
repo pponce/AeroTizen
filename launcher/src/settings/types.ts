@@ -68,7 +68,15 @@ export interface AppPresentation {
   logoPath: string | null; logoColour: string; largeLogo: boolean; useAppIcon: boolean;
   artwork: readonly string[];
 }
+export interface AppModeSnapshot {
+  enabled: boolean; ready: boolean; busy: boolean; persistent: boolean; blocked: boolean;
+  home_mode: string; error: string; vetro: string; warning: string;
+}
+export interface AppModeController extends Store<AppModeSnapshot> {
+  connect(): void; setEnabled(enabled: boolean): void; checkVetro(): void;
+}
 export interface SettingsServices {
+  appMode?: AppModeController;
   config: LauncherConfig;
   translate(value: string): string;
   clock: Omit<Clock, 'tick'>;

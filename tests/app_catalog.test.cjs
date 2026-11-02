@@ -169,6 +169,8 @@ test('watcher requests keep the preloaded store IDs from the shared catalogue', 
   for (const name of ['config.js', 'app-catalog.js', 'app-lookup.js', 'homewatch.js']) {
     vm.runInContext(script(name), context);
   }
+  // Exercise the retained watcher interface independently of the manual widget default.
+  A.config.MANUAL_APP = false;
   A.homewatch.watch('org.tizen.netflix-app');
   A.homewatch.watch('org.tizen.primevideo');
   A.homewatch.watch('com.samsung.tv.aria-video');

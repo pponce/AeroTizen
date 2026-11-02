@@ -12,11 +12,10 @@
   <tizen:service id="DclHome001.Watcher" on-boot="true" auto-restart="true">
     <tizen:content src="service/index.js"/>
     <tizen:name>HomeWatcher</tizen:name>
-    <tizen:description>Returns to the launcher when Home is pressed inside an app</tizen:description>
+    <tizen:description>Stores Home behavior; watches only when App mode is turned off</tizen:description>
   </tizen:service>
   <tizen:profile name="tv-samsung"/>
-  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="enable" encryption="disable" install-location="auto" hwkey-event="enable"/>
-  <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
   <tizen:metadata key="http://samsung.com/tv/metadata/use.network" value="false"/>
   <tizen:metadata key="http://tizen.org/metadata/app_ui_type/base_screen_resolution" value="extensive"/>
   <access origin="*" subdomains="true"/>

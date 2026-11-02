@@ -46,7 +46,15 @@ var state = {
 };
 var createHomeMode = require('./home-mode');
 var homeMode = createHomeMode(null, updateMode, true);
-function watcherEnabled() { return !stopped && homeMode.read().mode === 'watcher'; }
+var createAppMode = require('./app-mode');
+var appMode = createAppMode(null, updateMode, true);
+var homeReady = false, appReady = false;
+function watcherEnabled() {
+  return !stopped && homeReady && appReady && !appMode.read().enabled && !appMode.read().blocked && homeMode.read().mode === 'watcher';
+}
+function appModeStatus() {
+  return Object.assign({}, appMode.read(), { ready: homeReady && appReady, home_mode: homeMode.read().mode });
+}
 
 function record(kind, detail) {
   diagnostics.record('watcher.' + kind, { reason: detail });
@@ -407,8 +415,40 @@ function controlHome(req, res) {
   req.on('end', function () {
     if (finished) { return; }
     finished = true;
-    try { reply(200, homeMode.change(JSON.parse(body))); }
+    try {
+      var request = JSON.parse(body);
+      // Restoring a pre-existing native assignment must remain possible in App mode.
+      if (appMode.read().enabled && homeMode.read().mode === 'watcher') { throw new Error('Turn App mode off before assigning Native Home'); }
+      reply(200, homeMode.change(request));
+    }
     catch (e) { reply(409, { error: e.message, homeControl: homeMode.read() }); }
+  });
+}
+function controlAppMode(req, res) {
+  var headers = req.headers || {};
+  function reply(code, data) {
+    var output = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+    if (headers.origin === 'null' || headers.origin === 'file://') { output['Access-Control-Allow-Origin'] = headers.origin; }
+    res.writeHead(code, output); res.end(JSON.stringify(data));
+  }
+  if (headers.origin && headers.origin !== 'null' && headers.origin !== 'file://') { reply(403, { error: 'Local launcher required' }); return; }
+  if (!homeReady || !appReady) { reply(503, { error: 'Home behavior is still loading' }); return; }
+  if (req.method === 'GET') { reply(200, appModeStatus()); return; }
+  if (req.method !== 'POST') { reply(405, { error: 'GET or POST required' }); return; }
+  if (!/^(application\/json|text\/plain)(;.*)?$/.test(headers['content-type'] || '')) { reply(415, { error: 'JSON body required' }); return; }
+  var body = '', finished = false;
+  if (req.setEncoding) { req.setEncoding('utf8'); }
+  req.on('data', function (chunk) {
+    if (finished) { return; } body += chunk;
+    if (body.length > 1024) { finished = true; reply(413, { error: 'Request too large' }); }
+  });
+  req.on('error', function () { if (!finished) { finished = true; reply(400, { error: 'Request failed' }); } });
+  req.on('end', function () {
+    if (finished) { return; } finished = true;
+    try {
+      if (homeMode.read().mode !== 'watcher') { throw new Error('Restore Native Home through the AeroTizen CLI before changing App mode'); }
+      appMode.change(JSON.parse(body)); reply(200, appModeStatus());
+    } catch (error) { reply(409, { error: error.message, appMode: appModeStatus() }); }
   });
 }
 function diagnosticRequest(req, res, pathname) {
@@ -456,6 +496,7 @@ module.exports.onStart = function () {
     var url = require('url').parse(req.url, true), query = url.query;
     if (url.pathname === '/diagnostics/logs' || url.pathname === '/diagnostics/events') { diagnosticRequest(req, res, url.pathname); return; }
     if (['/home', '/leave', '/watch'].indexOf(url.pathname) >= 0) { diagnostics.record('service.request', { action: url.pathname.slice(1) }); }
+    if (url.pathname === '/app-mode') { controlAppMode(req, res); return; }
     if (url.pathname === '/control/home') { controlHome(req, res); return; }
     if (url.pathname === '/startup' && typeof query.data === 'string' && query.data.length <= 4096) {
       try {
@@ -476,16 +517,21 @@ module.exports.onStart = function () {
     } else if (url.pathname === '/home') {
       invalidate('launcher returned'); state.leaving = false; resetTracking();
     }
-    var response = Object.assign({}, state, { art: art.getState(), homeControl: homeMode.read() });
+    var response = Object.assign({}, state, { art: art.getState(), homeControl: homeMode.read(), appMode: appModeStatus() });
     res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(response));
   });
   server.listen(47790, '127.0.0.1');
   require('./home-store')(typeof tizen !== 'undefined' ? tizen : null, function (storage, failed) {
     if (stopped) { return; }
-    homeMode = createHomeMode(storage, updateMode, failed);
+    homeMode = createHomeMode(storage, updateMode, failed); homeReady = true;
     updateMode();
   });
+  require('./home-store')(typeof tizen !== 'undefined' ? tizen : null, function (storage, failed) {
+    if (stopped) { return; }
+    appMode = createAppMode(storage, updateMode, failed); appReady = true;
+    updateMode();
+  }, 'aerotizen-app-mode-v1.json');
 };
 module.exports.onRequest = function () {};
 module.exports.onExit = function () {
