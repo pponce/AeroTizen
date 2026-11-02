@@ -1,8 +1,8 @@
-name: CI
+name: App mode preflight
 
 on:
   push:
-    branches: [main]
+    branches: [build/pr-app-mode]
   pull_request:
   workflow_call:
     inputs:
