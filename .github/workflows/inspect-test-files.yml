@@ -1,0 +1,40 @@
+name: Identify failing browser test files
+on:
+  push:
+    branches: [build/app-mode-test-files]
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 41546834661
+          name: settings-browser-failures
+          path: fixture-report
+      - name: Record repository test paths only
+        shell: python
+        run: |
+          import pathlib, re, subprocess
+          tracked = subprocess.check_output(["git", "ls-files", "tests/browser/*.spec.cjs"], text=True).splitlines()
+          folders = [p.name for p in pathlib.Path("fixture-report").iterdir() if p.is_dir()]
+          selected = []
+          for name in tracked:
+              stem = pathlib.Path(name).name.removesuffix(".spec.cjs")
+              prefix = re.sub(r"[^a-zA-Z0-9]+", "-", stem)
+              if any(folder.startswith(prefix + "-") for folder in folders):
+                  selected.append(name)
+          dest = pathlib.Path("ci-results/failed-browser-test-paths.txt")
+          dest.parent.mkdir(exist_ok=True)
+          dest.write_text("\n".join(selected) + "\n")
+          print("Matched repository test files:", len(selected))
+      - name: Save repository test paths
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ci-results/failed-browser-test-paths.txt
+          git commit -m 'List repository browser tests requiring investigation'
+          git push origin HEAD:build/app-mode-test-files
