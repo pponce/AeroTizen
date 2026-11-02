@@ -18,7 +18,7 @@ jobs:
       - name: Record repository test paths only
         shell: python
         run: |
-          import pathlib, re, subprocess
+          import pathlib, re, subprocess, zipfile
           tracked = subprocess.check_output(["git", "ls-files", "tests/browser/*.spec.cjs"], text=True).splitlines()
           folders = [p.name for p in pathlib.Path("fixture-report").iterdir() if p.is_dir()]
           selected = []
@@ -27,6 +27,19 @@ jobs:
               prefix = re.sub(r"[^a-zA-Z0-9]+", "-", stem)
               if any(folder.startswith(prefix + "-") for folder in folders):
                   selected.append(name)
+          locations = set()
+          for archive in pathlib.Path("fixture-report").rglob("*.zip"):
+              with zipfile.ZipFile(archive) as z:
+                  for entry in z.namelist():
+                      if not entry.endswith(".trace"): continue
+                      raw = z.read(entry).decode(errors="replace")
+                      for name in tracked:
+                          count = len(pathlib.Path(name).read_text().splitlines())
+                          for match in re.finditer(re.escape(name) + r":(\d+):(\d+)", raw):
+                              line, column = map(int, match.groups())
+                              if 0 < line <= count and 0 < column < 2000:
+                                  locations.add(name + ":" + str(line) + ":" + str(column))
+          selected.extend(sorted(locations))
           dest = pathlib.Path("ci-results/failed-browser-test-paths.txt")
           dest.parent.mkdir(exist_ok=True)
           dest.write_text("\n".join(selected) + "\n")
