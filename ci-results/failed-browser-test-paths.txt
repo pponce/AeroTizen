@@ -1,2 +1,4 @@
 tests/browser/diagnostics.spec.cjs
 tests/browser/settings.spec.cjs
+tests/browser/diagnostics.spec.cjs:64:3
+tests/browser/diagnostics.spec.cjs:66:21
