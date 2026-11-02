@@ -9,6 +9,11 @@
   </tizen:app-control>
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
   <tizen:application id="DclHome001.Home" package="DclHome001" required_version="2.4"/>
+  <tizen:service id="DclHome001.Watcher" on-boot="true" auto-restart="true">
+    <tizen:content src="service/index.js"/>
+    <tizen:name>HomeWatcher</tizen:name>
+    <tizen:description>Stores Home behavior; watches only when App mode is turned off</tizen:description>
+  </tizen:service>
   <tizen:profile name="tv-samsung"/>
   <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
   <tizen:metadata key="http://samsung.com/tv/metadata/use.network" value="false"/>

@@ -2,7 +2,7 @@
 window.AeroTizen = window.AeroTizen || {};
 
 AeroTizen.config = {
-  // This widget opens from Apps and has no registered HomeWatcher service.
+  // Safe default until the local service confirms the saved App mode.
   MANUAL_APP: true,
   APP_ID: 'DclHome001.Home',
   SERVICE_ID: 'DclHome001.Watcher',

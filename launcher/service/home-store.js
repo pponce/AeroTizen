@@ -3,7 +3,9 @@
 // Resolve the package's private persistent directory through the TV API, then
 // use Node's atomic rename and fsync before acknowledging a handoff.
 var fs = require('fs');
-module.exports = function (tz, ready) {
+module.exports = function (tz, ready, filename) {
+  filename = filename || 'aerotizen-home-routing-v1.json';
+  if (filename !== 'aerotizen-home-routing-v1.json' && filename !== 'aerotizen-app-mode-v1.json') { ready(null, true); return; }
   if (!tz || !tz.filesystem || !tz.filesystem.resolve) { ready(null, false); return; }
   try {
     tz.filesystem.resolve('wgt-private', function (directory) {
@@ -11,7 +13,7 @@ module.exports = function (tz, ready) {
         var uri = directory.toURI();
         if (uri.indexOf('file:///') !== 0) { throw new Error('Private storage URI unavailable'); }
         var folder = decodeURIComponent(uri.slice(7)).replace(/\/$/, '');
-        var path = folder + '/aerotizen-home-routing-v1.json';
+        var path = folder + '/' + filename;
         var store = {
           exists: function () {
             try { fs.statSync(path); return true; }

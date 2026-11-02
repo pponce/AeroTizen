@@ -1,8 +1,9 @@
-import type { ContinueSource, AppPresentation, Background, Clock, InstalledApp, LauncherConfig, SettingsBridge, SettingsSource, WeatherLocation } from '../types';
+import type { AppModeController, ContinueSource, AppPresentation, Background, Clock, InstalledApp, LauncherConfig, SettingsBridge, SettingsSource, WeatherLocation } from '../types';
 
 export interface InputSource { type: string; number?: number; editName?: string }
 
 export interface LauncherRuntime {
+  appMode?: AppModeController;
   i18n?: { t(value: string): string };
   config: LauncherConfig;
   settings: SettingsSource;

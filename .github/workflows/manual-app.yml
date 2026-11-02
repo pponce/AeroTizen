@@ -22,6 +22,14 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/browser/app_mode.spec.cjs tests/browser/settings.spec.cjs tests/browser/glass_settings.spec.cjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: app-mode-browser-failures
+          path: test-results/
+          retention-days: 7
       - run: python tools/build_release.py launcher --output dist/manual-app
       - run: python tools/check_manual_app.py dist/manual-app/aerotizen-launcher-*.wgt
       - uses: actions/upload-artifact@v4

@@ -268,10 +268,32 @@
     });
   }
 
+  function renderAppMode() {
+    if (!A.appMode || !A.$('app-mode-choices')) { return; }
+    var state = A.appMode.getSnapshot(), box = A.$('app-mode-choices');
+    var disabled = !state.ready || state.busy || !state.persistent || state.home_mode !== 'watcher';
+    box.textContent = '';
+    [true, false].forEach(function (enabled) {
+      var blocked = disabled || state.blocked && !enabled;
+      var control = pill('app-mode:' + enabled, enabled ? 'On (default)' : 'Off', state.ready && state.enabled === enabled,
+        function () { if (!blocked) { A.appMode.setEnabled(enabled); } });
+      control.setAttribute('role', 'button'); control.setAttribute('aria-pressed', String(state.ready && state.enabled === enabled));
+      control.setAttribute('aria-disabled', String(blocked)); box.appendChild(control);
+    });
+    A.$('app-mode-status').textContent = state.error || (!state.ready ? 'Checking Home behavior…' :
+      state.home_mode !== 'watcher' ? 'Restore Native Home through the AeroTizen CLI before changing App mode.' :
+        !state.persistent ? 'App mode storage is unavailable. The watcher is off.' : state.blocked ? 'Select On to save App mode before enabling the watcher.' :
+          state.busy ? 'Saving…' : state.enabled ? 'Automatic Home takeover is off.' : 'HomeWatcher and automatic startup are enabled.');
+    A.$('app-mode-warning').textContent = state.warning;
+    var check = A.$('app-mode-check'); check.textContent = '';
+    var button = pill('app-mode:check', 'Check status', false, function () { if (!state.busy) { A.appMode.connect(); A.appMode.checkVetro(); } });
+    button.setAttribute('role', 'button'); button.setAttribute('aria-disabled', String(state.busy)); check.appendChild(button);
+  }
+
   function render() {
     renderBackgrounds(); renderWeather(); renderUnits(); renderDateTime();
     renderVisibility('network-visibility', 'showNetwork', ['Show', 'Hide'], A.network.updateVisibility);
-    renderCardSizes(); renderInputVisibility(); renderHdmiOverrides(); renderInputNames(); renderAppMenu();
+    renderCardSizes(); renderInputVisibility(); renderHdmiOverrides(); renderInputNames(); renderAppMenu(); renderAppMode();
     focus();
   }
 
@@ -292,7 +314,7 @@
       [kids('weather-location')], results, [kids('weather-visibility')],
       [kids('units')], [kids('time-formats')], dateRows, [kids('network-visibility')],
       [kids('live-tv-visibility')], [kids('card-sizes')], [kids('input-visibility')],
-      [kids('hdmi-force-visibility')], [kids('input-names')], A.chunk(kids('all-apps'), 5), [[A.$('escape')]]).filter(function (row) { return row.length; });
+      [kids('hdmi-force-visibility')], [kids('input-names')], A.chunk(kids('all-apps'), 5), [A.$('app-mode-choices') ? kids('app-mode-choices') : []], [A.$('app-mode-check') ? kids('app-mode-check') : []], [[A.$('escape')]]).filter(function (row) { return row.length; });
   }
 
   function focus() {
@@ -343,6 +365,7 @@
     document.body.classList.add('editing');
     A.$('editor').hidden = false;
     render();
+    if (A.appMode) { A.appMode.connect(); A.appMode.checkVetro(); }
   }
 
   function close() {
@@ -353,6 +376,8 @@
     S.save();
     A.homeScreen.render();
   }
+
+  if (A.appMode) { A.appMode.subscribe(function () { if (open) { renderAppMode(); focus(); } }); }
 
   A.settingsUi = { open: openSheet, close: close, isOpen: function () { return open; }, focus: focus, keydown: keydown };
 })(window.AeroTizen);

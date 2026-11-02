@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-test('the shipped app configuration makes all startup hooks inert on a TV', () => {
+test('the safe configuration keeps legacy watcher hooks inert without a mode controller', () => {
   const launches = [], requests = [], listeners = {};
   const window = { AeroTizen: {}, document: { hidden: false,
     addEventListener(name, callback) { listeners[name] = callback; } } };

@@ -30,6 +30,7 @@
   // Explicit Samsung Home escape waits for /leave before opening the native UI.
   // Otherwise HomeWatcher may immediately reclaim the launcher.
   function leaveBeforeLaunch(onReady, onFailure) {
+    if (A.appMode && !A.appMode.getSnapshot().ready) { onFailure('Check Home behavior in Settings first'); return; }
     if (cfg.MANUAL_APP) { onReady(); return; }
     var xhr, settled = false;
     function fail(reason) {
