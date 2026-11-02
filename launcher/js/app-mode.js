@@ -80,7 +80,8 @@
     publish({ busy: true, error: '' });
     request('POST', cfg.SERVICE_URL + '/app-mode', { enabled: enabled, expected_enabled: state.enabled }, function (value, error) {
       if (error || !apply(value)) {
-        if (value && value.appMode) { apply(value.appMode); }
+        var confirmed = value && value.appMode && apply(value.appMode);
+        if (!confirmed) { publish({ ready: false }); }
         publish({ error: value && typeof value.error === 'string' ? value.error : 'Could not confirm the change. Check status before trying again.' });
       }
       publish({ busy: false });

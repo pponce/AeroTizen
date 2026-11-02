@@ -58,8 +58,10 @@ test('failed writes and concurrent changes never display an unconfirmed setting'
   h.A.appMode.setEnabled(false); h.requests[1].onerror();
   assert.equal(h.A.config.MANUAL_APP, true); assert.equal(h.A.appMode.getSnapshot().enabled, true);
   assert.match(h.A.appMode.getSnapshot().error, /confirm/);
+  assert.equal(h.A.appMode.getSnapshot().ready, false, 'a lost reply leaves the saved setting unknown');
+  h.A.appMode.connect(); h.reply(h.requests[3], h.status(true));
   h.A.appMode.setEnabled(false);
-  h.reply(h.requests[3], {error: 'App mode changed; check its status and try again', appMode: h.status(false)}, 409);
+  h.reply(h.requests[4], {error: 'App mode changed; check its status and try again', appMode: h.status(false)}, 409);
   assert.equal(h.A.config.MANUAL_APP, false);
   assert.match(h.A.appMode.getSnapshot().error, /changed/);
 });
