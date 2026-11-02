@@ -18,7 +18,7 @@
   }
 
   function rearmWatcher() {
-    if (!tz) { return; }
+    if (!tz || cfg.MANUAL_APP) { return; }
     try {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', cfg.SERVICE_URL + '/home', true);
@@ -30,6 +30,7 @@
   // Explicit Samsung Home escape waits for /leave before opening the native UI.
   // Otherwise HomeWatcher may immediately reclaim the launcher.
   function leaveBeforeLaunch(onReady, onFailure) {
+    if (cfg.MANUAL_APP) { onReady(); return; }
     var xhr, settled = false;
     function fail(reason) {
       if (settled) { return; }

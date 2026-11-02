@@ -2,6 +2,8 @@
 window.AeroTizen = window.AeroTizen || {};
 
 AeroTizen.config = {
+  // This widget opens from Apps and has no registered HomeWatcher service.
+  MANUAL_APP: true,
   APP_ID: 'DclHome001.Home',
   SERVICE_ID: 'DclHome001.Watcher',
   SERVICE_URL: 'http://127.0.0.1:47790',

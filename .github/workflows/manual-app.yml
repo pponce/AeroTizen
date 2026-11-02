@@ -1,0 +1,31 @@
+name: Manual app
+on:
+  push:
+    branches: [feat/manual-app-mode]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  widget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: python tools/build_release.py launcher --output dist/manual-app
+      - run: python tools/check_manual_app.py dist/manual-app/aerotizen-launcher-*.wgt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AeroTizen-manual-unsigned
+          path: dist/manual-app/
+          retention-days: 14

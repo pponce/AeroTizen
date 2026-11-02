@@ -124,6 +124,8 @@
   } catch (e) { /* unavailable async storage keeps an in-memory log */ }
   // Callers only queue work. Snapshot encoding and HTTP sends run in a later task.
   function flush() {
+    // Manual apps keep the local log; there is no service to receive a copy.
+    if (root.AeroTizen && root.AeroTizen.config && root.AeroTizen.config.MANUAL_APP) { return; }
     if (busy || sendTimer !== null || retryTimer !== null || !root.tizen || !root.XMLHttpRequest || root.document.hidden) { return; }
     sendTimer = root.setTimeout(function () { sendTimer = null; send(); }, 0);
   }

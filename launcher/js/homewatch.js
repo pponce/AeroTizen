@@ -8,7 +8,7 @@
   var leaving = false;
 
   function tell(path, done, failed) {
-    if (!tz) { return; }
+    if (!tz || cfg.MANUAL_APP) { return; }
     var x = new XMLHttpRequest();
     x.open('GET', cfg.SERVICE_URL + path);
     x.timeout = 1500;
@@ -27,7 +27,7 @@
   }
 
   function start() {
-    if (!tz) { return; }
+    if (!tz || cfg.MANUAL_APP) { return; }
     if (window.AeroDiagnostics) { window.AeroDiagnostics.record('service.launch_requested'); }
     try {
       tz.application.launchAppControl(new tz.ApplicationControl('http://tizen.org/appcontrol/operation/service'),
@@ -48,11 +48,15 @@
       if (!tz) { A.toast('Would open Samsung Home'); return; }
       leaving = true;
       function failed() { leaving = false; A.toast('Samsung Home is unavailable. Try again.'); }
-      tell('/leave', function (status) {
-        if (!status || status.leaving !== true) { failed(); return; }
+      function openHome() {
         try {
           tz.application.launch('com.samsung.tv.csfs', null, function () { tell('/home'); failed(); });
         } catch (e) { tell('/home'); failed(); }
+      }
+      if (cfg.MANUAL_APP) { openHome(); return; }
+      tell('/leave', function (status) {
+        if (!status || status.leaving !== true) { failed(); return; }
+        openHome();
       }, failed);
     },
     isLeaving: function () { return leaving; }
