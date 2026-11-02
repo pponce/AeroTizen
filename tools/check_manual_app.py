@@ -23,8 +23,7 @@ def check(path):
         assert config.find("t:setting", ns).get("background-support") == "disable"
         for element in config.iter():
             assert not any(
-                word in element.get("key", "")
-                for word in ("appbootingsupport", "prelaunch.support")
+                word in element.get("key", "") for word in ("appbootingsupport", "prelaunch.support")
             ), "Unexpected startup metadata"
         html = archive.read("index.html").decode()
         assert html.index('src="js/config.js"') < html.index('src="js/diagnostics.js"')
