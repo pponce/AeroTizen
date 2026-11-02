@@ -1,0 +1,2 @@
+tests/browser/diagnostics.spec.cjs
+tests/browser/settings.spec.cjs
