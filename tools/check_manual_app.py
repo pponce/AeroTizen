@@ -23,9 +23,7 @@ def check(path):
         # Keep the original package capabilities so App mode Off restores the watcher.
         # Samsung prelaunch loads the UI in the background, independently of our watcher gate.
         assert config.find("t:setting", ns).get("background-support") == "enable"
-        metadata = {
-            element.get("key"): element.get("value") for element in config.findall("t:metadata", ns)
-        }
+        metadata = {element.get("key"): element.get("value") for element in config.findall("t:metadata", ns)}
         assert metadata.get("http://samsung.com/tv/metadata/prelaunch.support") == "true"
         for element in config.iter():
             assert "appbootingsupport" not in element.get("key", ""), "Unexpected startup metadata"
