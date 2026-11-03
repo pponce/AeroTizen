@@ -20,7 +20,7 @@ function runtime() {
   });
   function reply(request, value, code = 200) { request.status = code; request.responseText = JSON.stringify(value); request.onload(); }
   function status(enabled, extra = {}) { return {protocol: 1, enabled, ready: true, persistent: true, blocked: false, home_mode: 'watcher', ...extra}; }
-  return {A, requests, launches, events, timers, watcher, reply, status};
+  return {A, requests, launches, events, timers, watcher, reply, status, document};
 }
 
 test('the UI uses acknowledged App mode and only starts its own control service', () => {
@@ -34,23 +34,19 @@ test('the UI uses acknowledged App mode and only starts its own control service'
   assert.deepEqual(h.requests[1].body, {enabled: false, expected_enabled: true});
   h.reply(h.requests[1], h.status(false));
   assert.equal(h.A.config.MANUAL_APP, false); assert.equal(h.watcher.length, 2);
-  assert.equal(h.requests[2].url, 'http://127.0.0.1:8099/screen');
-  assert.equal(h.requests[2].method, 'GET');
+  h.A.appMode.setEnabled(true); h.reply(h.requests[2], h.status(true));
+  assert.equal(h.A.config.MANUAL_APP, true);
+  h.A.appMode.setEnabled(false); h.reply(h.requests[3], h.status(false));
+  assert.equal(h.A.config.MANUAL_APP, false); assert.equal(h.watcher.length, 4);
+  assert.ok(h.requests.every(request => request.url === h.A.config.SERVICE_URL + '/app-mode'));
 });
 
-test('Vetro detection warns on enabled, distinguishes disabled from unavailable, and never writes', () => {
-  const h = runtime(); h.A.appMode.checkVetro();
-  h.reply(h.requests[0], {version: '0.3.5', launcher: {enabled: true, running: false}});
-  assert.equal(h.A.appMode.getSnapshot().vetro, 'enabled');
-  assert.match(h.A.appMode.getSnapshot().warning, /Turn off Launcher in Vetro/);
-  h.A.appMode.checkVetro(); h.reply(h.requests[1], {version: '0.3.5', launcher: {enabled: false}});
-  assert.equal(h.A.appMode.getSnapshot().vetro, 'disabled');
-  h.A.appMode.checkVetro(); h.requests[2].ontimeout();
-  assert.equal(h.A.appMode.getSnapshot().vetro, 'unknown');
-  h.A.appMode.checkVetro(); h.reply(h.requests[3], {launcher: {enabled: 'false'}});
-  assert.equal(h.A.appMode.getSnapshot().vetro, 'unknown');
-  assert.ok(h.requests.every(request => request.method === 'GET' && request.url.endsWith('/screen') && !request.body));
-  assert.deepEqual(h.launches, []);
+test('background prelaunch loads App mode without reporting a foreground return', () => {
+  const h = runtime(); h.document.hidden = true;
+  h.A.appMode.connect(); h.reply(h.requests[0], h.status(false));
+  assert.equal(h.A.config.MANUAL_APP, false); assert.deepEqual(h.watcher, []);
+  h.document.hidden = false; h.events.visibilitychange(); h.reply(h.requests[1], h.status(false));
+  assert.equal(h.watcher.length, 2);
 });
 
 test('failed writes and concurrent changes never display an unconfirmed setting', () => {
@@ -59,9 +55,9 @@ test('failed writes and concurrent changes never display an unconfirmed setting'
   assert.equal(h.A.config.MANUAL_APP, true); assert.equal(h.A.appMode.getSnapshot().enabled, true);
   assert.match(h.A.appMode.getSnapshot().error, /confirm/);
   assert.equal(h.A.appMode.getSnapshot().ready, false, 'a lost reply leaves the saved setting unknown');
-  h.A.appMode.connect(); h.reply(h.requests[3], h.status(true));
+  h.A.appMode.connect(); h.reply(h.requests[2], h.status(true));
   h.A.appMode.setEnabled(false);
-  h.reply(h.requests[4], {error: 'App mode changed; check its status and try again', appMode: h.status(false)}, 409);
+  h.reply(h.requests[3], {error: 'App mode changed; check its status and try again', appMode: h.status(false)}, 409);
   assert.equal(h.A.config.MANUAL_APP, false);
   assert.match(h.A.appMode.getSnapshot().error, /changed/);
 });

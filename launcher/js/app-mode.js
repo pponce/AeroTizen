@@ -1,9 +1,9 @@
-// Home behavior belongs to AeroTizen's own package. Vetro is queried read-only.
+// Home behavior belongs to AeroTizen's own package; no external launcher is required.
 (function (A) {
   'use strict';
-  var cfg = A.config, listeners = [], connecting = false, checking = false;
+  var cfg = A.config, listeners = [], connecting = false;
   var state = { enabled: true, ready: false, busy: false, persistent: false,
-    blocked: false, home_mode: 'watcher', error: '', vetro: 'unchecked', warning: '' };
+    blocked: false, home_mode: 'watcher', error: '' };
   function publish(patch) {
     var next = {}, key;
     for (key in state) { if (Object.prototype.hasOwnProperty.call(state, key)) { next[key] = state[key]; } }
@@ -59,21 +59,6 @@
     }
     read();
   }
-  function checkVetro() {
-    if (!A.tizen) { publish({ vetro: 'unknown', warning: 'Vetro launcher status is available on the TV.' }); return; }
-    if (checking) { return; } checking = true;
-    publish({ vetro: 'checking', warning: 'Checking Vetro launcher status…' });
-    request('GET', 'http://127.0.0.1:8099/screen', null, function (value, error) {
-      checking = false;
-      if (error || !value || typeof value.version !== 'string' || !value.launcher || typeof value.launcher.enabled !== 'boolean') {
-        publish({ vetro: 'unknown', warning: 'Could not check Vetro on port 8099. If you use its Launcher, turn that feature off in Vetro before turning App mode off.' });
-      } else if (value.launcher.enabled) {
-        publish({ vetro: 'enabled', warning: 'Vetro’s Launcher is on. Turn off Launcher in Vetro before turning App mode off. Otherwise both can compete for Home, causing flicker or unexpected returns. Keep Vetro itself installed.' });
-      } else {
-        publish({ vetro: 'disabled', warning: 'Vetro’s Launcher is off. Vetro itself can stay installed.' });
-      }
-    });
-  }
   function setEnabled(enabled) {
     if (typeof enabled !== 'boolean' || !state.ready || state.busy || connecting || !state.persistent || state.home_mode !== 'watcher') { return; }
     if (enabled === state.enabled && !state.blocked) { return; }
@@ -85,13 +70,12 @@
         publish({ error: value && typeof value.error === 'string' ? value.error : 'Could not confirm the change. Check status before trying again.' });
       }
       publish({ busy: false });
-      checkVetro();
     });
   }
   A.appMode = {
     getSnapshot: function () { return state; },
     subscribe: function (listener) { listeners.push(listener); return function () { listeners = listeners.filter(function (item) { return item !== listener; }); }; },
-    connect: connect, setEnabled: setEnabled, checkVetro: checkVetro
+    connect: connect, setEnabled: setEnabled
   };
   document.addEventListener('visibilitychange', function () { if (!document.hidden) { connect(); } });
 })(window.AeroTizen);

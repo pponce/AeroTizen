@@ -12,7 +12,7 @@ export const AppModeSettings = ({ controller, active }: { controller?: AppModeCo
     return controller.subscribe(() => setState(controller.getSnapshot()));
   }, [controller]);
   useEffect(() => {
-    if (active && controller) { controller.connect(); controller.checkVetro(); }
+    if (active && controller) { controller.connect(); }
   }, [active, controller]);
   useLayoutEffect(() => { navigation.invalidate(); }, [state, navigation]);
   if (!controller || !state) { return null; }
@@ -24,7 +24,7 @@ export const AppModeSettings = ({ controller, active }: { controller?: AppModeCo
         : state.busy ? 'Saving…' : state.enabled ? 'AeroTizen opens as an app. Automatic Home takeover is off.' : 'AeroTizen’s HomeWatcher and automatic startup are enabled.');
   return <section aria-label="Home behavior">
     <h3>App mode</h3>
-    <p class="hint">On: open AeroTizen like any other app. Off: let AeroTizen return when Samsung Home appears and start automatically.</p>
+    <p class="hint">On: open AeroTizen like any other app. Off: restore AeroTizen’s automatic startup and return when Samsung Home appears.</p>
     <div class="units" role="group" aria-label="App mode">
       {[true, false].map(enabled => <RemoteControl key={String(enabled)} focusKey={'app-mode:' + enabled}
         class={'pill unit' + (state.ready && state.enabled === enabled ? ' on' : '')} role="button"
@@ -34,8 +34,7 @@ export const AppModeSettings = ({ controller, active }: { controller?: AppModeCo
       </RemoteControl>)}
     </div>
     <p class="hint" role="status">{status}</p>
-    <p class="hint" role="status">{state.warning}</p>
     <RemoteControl focusKey="app-mode:check" class="pill unit" role="button" aria-disabled={state.busy}
-      onClick={() => { if (!state.busy) { controller.connect(); controller.checkVetro(); } }}>Check status</RemoteControl>
+      onClick={() => { if (!state.busy) { controller.connect(); } }}>Check status</RemoteControl>
   </section>;
 };

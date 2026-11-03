@@ -284,9 +284,8 @@
       state.home_mode !== 'watcher' ? 'Restore Native Home through the AeroTizen CLI before changing App mode.' :
         !state.persistent ? 'App mode storage is unavailable. The watcher is off.' : state.blocked ? 'Select On to save App mode before enabling the watcher.' :
           state.busy ? 'Saving…' : state.enabled ? 'Automatic Home takeover is off.' : 'HomeWatcher and automatic startup are enabled.');
-    A.$('app-mode-warning').textContent = state.warning;
     var check = A.$('app-mode-check'); check.textContent = '';
-    var button = pill('app-mode:check', 'Check status', false, function () { if (!state.busy) { A.appMode.connect(); A.appMode.checkVetro(); } });
+    var button = pill('app-mode:check', 'Check status', false, function () { if (!state.busy) { A.appMode.connect(); } });
     button.setAttribute('role', 'button'); button.setAttribute('aria-disabled', String(state.busy)); check.appendChild(button);
   }
 
@@ -365,7 +364,7 @@
     document.body.classList.add('editing');
     A.$('editor').hidden = false;
     render();
-    if (A.appMode) { A.appMode.connect(); A.appMode.checkVetro(); }
+    if (A.appMode) { A.appMode.connect(); }
   }
 
   function close() {
