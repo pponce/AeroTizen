@@ -1,4 +1,4 @@
-"""Check the installable widget's manual-app contract without contacting a TV."""
+"""Check the widget's default App mode and opt-in watcher without contacting a TV."""
 
 import sys
 import xml.etree.ElementTree as ET
@@ -20,11 +20,15 @@ def check(path):
         assert services[0].get("on-boot") == "true" and services[0].get("auto-restart") == "true"
         assert b"MANUAL_APP: true" in archive.read("js/config.js")
         assert "service/app-mode.js" in archive.namelist()
-        assert config.find("t:setting", ns).get("background-support") == "disable"
+        # Keep the original package capabilities so App mode Off restores the watcher.
+        # Samsung prelaunch loads the UI in the background, independently of our watcher gate.
+        assert config.find("t:setting", ns).get("background-support") == "enable"
+        metadata = {
+            element.get("key"): element.get("value") for element in config.findall("t:metadata", ns)
+        }
+        assert metadata.get("http://samsung.com/tv/metadata/prelaunch.support") == "true"
         for element in config.iter():
-            assert not any(
-                word in element.get("key", "") for word in ("appbootingsupport", "prelaunch.support")
-            ), "Unexpected startup metadata"
+            assert "appbootingsupport" not in element.get("key", ""), "Unexpected startup metadata"
         html = archive.read("index.html").decode()
         assert html.index('src="js/config.js"') < html.index('src="js/diagnostics.js"')
         assert html.index('src="js/app-mode.js"') < html.index('src="js/homewatch.js"')

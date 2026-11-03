@@ -70,10 +70,10 @@ export interface AppPresentation {
 }
 export interface AppModeSnapshot {
   enabled: boolean; ready: boolean; busy: boolean; persistent: boolean; blocked: boolean;
-  home_mode: string; error: string; vetro: string; warning: string;
+  home_mode: string; error: string;
 }
 export interface AppModeController extends Store<AppModeSnapshot> {
-  connect(): void; setEnabled(enabled: boolean): void; checkVetro(): void;
+  connect(): void; setEnabled(enabled: boolean): void;
 }
 export interface SettingsServices {
   appMode?: AppModeController;

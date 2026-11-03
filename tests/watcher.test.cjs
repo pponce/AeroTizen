@@ -715,6 +715,36 @@ test('App mode on cancels boot and late watcher replies and survives restart', (
   assert.equal(restart.requests.length, 0); assert.equal(restart.launches.length, 0);
 });
 
+test('turning App mode off again restores app return and the Samsung Home escape', () => {
+  const h = harness({ appMode: true, capability: false });
+  h.statuses.set(SELF, { running: true, visible: true });
+  h.api.onStart();
+  for (let cycle = 0; cycle < 2; cycle++) {
+    assert.equal(appModePost(h, false).code, 200);
+    h.control('/apps?ids=AppB'); h.control('/home'); h.advance(4000);
+    const before = h.launches.length;
+    h.control('/watch?id=AppB');
+    h.statuses.set(SELF, { running: true, visible: false });
+    h.statuses.set('AppB', { running: true, visible: true });
+    h.advance(4000);
+    assert.equal(h.launches.length, before, 'watcher leaves the foreground app alone');
+    h.statuses.set('AppB', { running: true, visible: false });
+    h.advance(3500);
+    assert.equal(h.launches.length, before + 1, 'original app return resumes after Off');
+    assert.equal(h.launches.at(-1).id, SELF);
+
+    h.control('/leave'); h.statuses.set(SELF, { running: true, visible: false });
+    h.advance(10000);
+    assert.equal(h.launches.length, before + 1, 'explicit Samsung Home escape is preserved');
+    assert.equal(appModePost(h, true).code, 200);
+    const requests = h.requests.length;
+    h.advance(60000);
+    assert.equal(h.launches.length, before + 1);
+    assert.equal(h.requests.length, requests, 'On stops polling as well as launches');
+    h.statuses.set(SELF, { running: true, visible: true });
+  }
+});
+
 test('App mode cancels in-flight Frame authorization', () => {
   const h = ready(); candidate(h);
   assert.ok(h.artReplies.length);

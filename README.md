@@ -271,17 +271,20 @@ existing watcher and automatic startup; turning it on cancels pending watcher la
 The registered local service stays available to save the preference, but does not poll
 apps or reopen AeroTizen while App mode is on.
 
-If you use **Vetro's Launcher**, turn that feature off in Vetro before enabling AeroTizen's
-watcher. AeroTizen checks Vetro's local status and shows a warning; it does not change Vetro's
-settings, replace it, or install another copy. An unavailable status check means unknown,
-not that Vetro is absent. Leaving both enabled can make them compete over Samsung Home.
+App mode also lets an external launcher, such as Vetro, open AeroTizen. Configure button
+assignments, startup and return behavior in that launcher. AeroTizen does not require or
+configure Vetro. Use one automatic Home controller at a time to avoid competing launches.
+
+Turning App mode off restores the standard AeroTizen watcher, including its existing
+model-specific detection limits. The package retains its background and prelaunch support
+in both modes; the saved preference controls whether the watcher may bring AeroTizen onscreen.
 
 Restore any existing native Home assignment before changing App mode. App mode does not
 rewrite the TV's native Home or startup settings.
 
 | Option | How it works |
 |---|---|
-| **App mode (default)** | Open AeroTizen manually; it does not reclaim Samsung Home or start its UI automatically. |
+| **App mode (default)** | Open AeroTizen manually or through an external launcher; its watcher does not reclaim Samsung Home or bring it onscreen at startup. |
 | **Watcher (App mode off)** | A background service detects a return to Samsung Home and reopens AeroTizen. Some apps cannot be detected (see [Limits](#limits)). |
 | **Native Home (opt-in)** | The TV routes Home from other apps to AeroTizen, with optional automatic startup. The watcher is disabled. |
 

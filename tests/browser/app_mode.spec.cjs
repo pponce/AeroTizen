@@ -2,14 +2,14 @@ const {test, expect} = require('@playwright/test');
 const {openCategory} = require('./drawer_helpers.cjs');
 
 for (const glass of [false, true]) {
-  test(`App mode persists and warns without changing Vetro (${glass ? 'Glass' : 'Classic'})`, async ({page}) => {
+  test(`App mode restores standard behavior and persists without Vetro (${glass ? 'Glass' : 'Classic'})`, async ({page}) => {
     let enabled = true;
     const vetroRequests = [], errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('https://**/*', route => route.fulfill({contentType: 'application/json', body: '{}'}));
     await page.route('http://127.0.0.1:8099/**', route => {
       vetroRequests.push({method: route.request().method(), url: route.request().url()});
-      return route.fulfill({contentType: 'application/json', body: JSON.stringify({version: '0.3.5', launcher: {enabled: true, running: true}})});
+      return route.abort();
     });
     await page.route('http://127.0.0.1:47790/**', route => {
       if (route.request().url().endsWith('/app-mode')) {
@@ -40,7 +40,6 @@ for (const glass of [false, true]) {
     await page.goto('/'); await open();
     const on = page.locator('[data-key="app-mode:true"]'), off = page.locator('[data-key="app-mode:false"]');
     await expect(on).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByText(/Vetro’s Launcher is on/)).toBeVisible();
     await off.focus(); await page.keyboard.press('Enter');
     await expect(off).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => page.evaluate(() => AeroTizen.config.MANUAL_APP)).toBe(false);
@@ -49,8 +48,10 @@ for (const glass of [false, true]) {
     await on.focus(); await page.keyboard.press('Enter');
     await expect(on).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => page.evaluate(() => AeroTizen.config.MANUAL_APP)).toBe(true);
-    expect(vetroRequests.length).toBeGreaterThan(0);
-    expect(vetroRequests.every(request => request.method === 'GET' && request.url.endsWith('/screen'))).toBe(true);
+    await off.focus(); await page.keyboard.press('Enter');
+    await expect(off).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => page.evaluate(() => AeroTizen.config.MANUAL_APP)).toBe(false);
+    expect(vetroRequests).toEqual([]);
     expect(errors).toEqual([]);
   });
 }
